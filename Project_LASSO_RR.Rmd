@@ -1,0 +1,314 @@
+---
+title: "Project"
+author: "Peike Wang"
+date: "2022/11/28"
+output:
+  html_document:
+    df_print: paged
+---
+
+# EDA
+
+```{r}
+library(MASS)
+library(splines)
+train <- read.csv("Ames/train.csv")
+
+train$MSZoning <- as.factor(train$MSZoning)
+train$LotFrontage[is.na(train$LotFrontage)] <- round(mean(train$LotFrontage, na.rm = TRUE)) #replace NA's with mean of rest of data
+train$Street <- as.factor(train$Street)
+train$Alley[is.na(train$Alley)] <- "No Alley Access"
+train$Alley <- as.factor(train$Alley)
+train$LotShape <- as.factor(train$LotShape)
+train$LandContour <- as.factor(train$LandContour)
+train$Utilities <- as.factor(train$Utilities)
+train$LotConfig <- as.factor(train$LotConfig)
+train$LandSlope <- as.factor(train$LandSlope)
+train$Neighborhood <- as.factor(train$Neighborhood)
+train$Condition1 <- as.factor(train$Condition1)
+train$Condition2 <- as.factor(train$Condition2)
+train$BldgType <- as.factor(train$BldgType)
+train$HouseStyle <- as.factor(train$HouseStyle)
+train$RoofStyle <- as.factor(train$RoofStyle)
+train$RoofMatl <- as.factor(train$RoofMatl)
+train$Exterior1st <- as.factor(train$Exterior1st)
+train$Exterior2nd <- as.factor(train$Exterior2nd)
+train$MasVnrType[is.na(train$MasVnrType)] <- "None"
+train$MasVnrType <- as.factor(train$MasVnrType)
+train$MasVnrArea[is.na(train$MasVnrArea)] <- 0
+train$ExterQual <- as.factor(train$ExterQual)
+train$ExterCond <- as.factor(train$ExterCond)
+train$Foundation <- as.factor(train$Foundation)
+train$BsmtQual[is.na(train$BsmtQual)] <- "NB" # NB = 'No Basement'
+train$BsmtQual <- as.factor(train$BsmtQual) 
+train$BsmtCond[is.na(train$BsmtCond)] <- "NB" # NB = 'No Basement'
+train$BsmtCond <- as.factor(train$BsmtCond) 
+train$BsmtExposure[is.na(train$BsmtExposure)] <- "NB" # NB = 'No Basement'
+train$BsmtExposure <- as.factor(train$BsmtExposure) 
+train$BsmtFinType1[is.na(train$BsmtFinType1)] <- "NB" # NB = 'No Basement'
+train$BsmtFinType1 <- as.factor(train$BsmtFinType1) 
+train$BsmtFinType2[is.na(train$BsmtFinType2)] <- "NB" # NB = 'No Basement'
+train$BsmtFinType2 <- as.factor(train$BsmtFinType2) 
+train$Heating <- as.factor(train$Heating) 
+train$HeatingQC <- as.factor(train$HeatingQC) 
+train$CentralAir<- as.factor(train$CentralAir) 
+train <- train[!is.na(train$Electrical),] # Remove a row :(
+train$Electrical<- as.factor(train$Electrical) 
+train$KitchenQual<- as.factor(train$KitchenQual) 
+train$Functional<- as.factor(train$Functional) 
+train$FireplaceQu[is.na(train$FireplaceQu)] <- "NF" # NF = No Fireplace
+train$FireplaceQu <- as.factor(train$FireplaceQu)
+train$GarageType[is.na(train$GarageType)] <- "NG" # NG = No Garage
+train$GarageType <- as.factor(train$GarageType)
+# ASK ABOUT GARAGE YEAR BUILT
+train$GarageFinish[is.na(train$GarageFinish)] <- "NG" # NG = No Garage
+train$GarageFinish <- as.factor(train$GarageFinish)
+train$GarageQual[is.na(train$GarageQual)] <- "NG" # NG = No Garage
+train$GarageQual <- as.factor(train$GarageQual)
+train$GarageCond[is.na(train$GarageCond)] <- "NG" # NG = No Garage
+train$GarageCond <- as.factor(train$GarageCond)
+train$PavedDrive <- as.factor(train$PavedDrive)
+train$PoolQC[is.na(train$PoolQC)] <- "NP" # NG = No Pool
+train$PoolQC <- as.factor(train$PoolQC)
+train$Fence[is.na(train$Fence)] <- "NF" # NG = No Fence
+train$Fence <- as.factor(train$Fence)
+train$MiscFeature[is.na(train$MiscFeature)] <- "None" 
+train$MiscFeature <- as.factor(train$MiscFeature)
+train$SaleType <- as.factor(train$SaleType)
+train$SaleCondition <- as.factor(train$SaleCondition)
+
+train <- subset(train, select = -c(GarageYrBlt, Id))
+
+test <- read.csv("Ames/test_new.csv")
+
+test$MSZoning <- as.factor(test$MSZoning)
+test$LotFrontage[is.na(test$LotFrontage)] <- round(mean(test$LotFrontage, na.rm = TRUE)) #replace NA's with mean of rest of data
+test$Street <- as.factor(test$Street)
+test$Alley[is.na(test$Alley)] <- "No Alley Access"
+test$Alley <- as.factor(test$Alley)
+test$LotShape <- as.factor(test$LotShape)
+test$LandContour <- as.factor(test$LandContour)
+test <- test[!is.na(test$Utilities),] # Remove a row :(
+test$Utilities <- factor(test$Utilities, levels=levels(train$Utilities))
+test$LotConfig <- as.factor(test$LotConfig)
+test$LandSlope <- as.factor(test$LandSlope)
+test$Neighborhood <- as.factor(test$Neighborhood)
+test$Condition1 <- as.factor(test$Condition1)
+test$Condition2 <- factor(test$Condition2, levels=levels(train$Condition2))
+test$BldgType <- as.factor(test$BldgType)
+test$HouseStyle <- factor(test$HouseStyle, levels=levels(train$HouseStyle))
+test$RoofStyle <- as.factor(test$RoofStyle)
+test$RoofMatl <- factor(test$RoofMatl, levels=levels(train$RoofMatl))
+test$Exterior1st <- factor(test$Exterior1st, levels=levels(train$Exterior1st))
+test$Exterior2nd <- factor(test$Exterior2nd, levels=levels(train$Exterior2nd))
+test$MasVnrType[is.na(test$MasVnrType)] <- "None"
+test$MasVnrType <- as.factor(test$MasVnrType)
+test$MasVnrArea[is.na(test$MasVnrArea)] <- 0
+test$ExterQual <- as.factor(test$ExterQual)
+test$ExterCond <- as.factor(test$ExterCond)
+test$Foundation <- as.factor(test$Foundation)
+test$BsmtQual[is.na(test$BsmtQual)] <- "NB" # NB = 'No Basement'
+test$BsmtQual <- as.factor(test$BsmtQual) 
+test$BsmtCond[is.na(test$BsmtCond)] <- "NB" # NB = 'No Basement'
+test$BsmtCond <- as.factor(test$BsmtCond) 
+test$BsmtExposure[is.na(test$BsmtExposure)] <- "NB" # NB = 'No Basement'
+test$BsmtExposure <- as.factor(test$BsmtExposure) 
+test$BsmtFinType1[is.na(test$BsmtFinType1)] <- "NB" # NB = 'No Basement'
+test$BsmtFinType1 <- as.factor(test$BsmtFinType1) 
+test$BsmtFinType2[is.na(test$BsmtFinType2)] <- "NB" # NB = 'No Basement'
+test$BsmtFinType2 <- as.factor(test$BsmtFinType2) 
+test$Heating <- factor(test$Heating, levels=levels(train$Heating))
+test$HeatingQC <- as.factor(test$HeatingQC) 
+test$CentralAir<- as.factor(test$CentralAir) 
+test$Electrical <- factor(test$Electrical, levels=levels(train$Electrical))
+test <- test[!is.na(test$BsmtFullBath),] # Remove a row :(
+test <- test[!is.na(test$KitchenQual),] # Remove a row :(
+test$KitchenQual<- as.factor(test$KitchenQual) 
+test <- test[!is.na(test$Functional),] # Remove a row :(
+test$Functional<- as.factor(test$Functional) 
+test$FireplaceQu[is.na(test$FireplaceQu)] <- "NF" # NF = No Fireplace
+test$FireplaceQu <- as.factor(test$FireplaceQu)
+test$GarageType[is.na(test$GarageType)] <- "NG" # NG = No Garage
+test$GarageType <- as.factor(test$GarageType)
+# ASK ABOUT GARAGE YEAR BUILT
+test$GarageFinish[is.na(test$GarageFinish)] <- "NG" # NG = No Garage
+test$GarageFinish <- as.factor(test$GarageFinish)
+test$GarageQual[is.na(test$GarageQual)] <- "NG" # NG = No Garage
+test$GarageQual <- factor(test$GarageQual, levels=levels(train$GarageQual))
+test$GarageCond[is.na(test$GarageCond)] <- "NG" # NG = No Garage
+test$GarageCond <- as.factor(test$GarageCond)
+test$PavedDrive <- as.factor(test$PavedDrive)
+test$PoolQC[is.na(test$PoolQC)] <- "NP" # NG = No Pool
+test$PoolQC <- factor(test$PoolQC, levels=levels(train$PoolQC))
+test$Fence[is.na(test$Fence)] <- "NF" # NG = No Fence
+test$Fence <- as.factor(test$Fence)
+test$MiscFeature[is.na(test$MiscFeature)] <- "None" 
+test$MiscFeature <- factor(test$MiscFeature, levels=levels(train$MiscFeature))
+test <- test[!is.na(test$SaleType),] # Remove a row :(
+test$SaleType <- as.factor(test$SaleType)
+test$SaleCondition <- as.factor(test$SaleCondition)
+
+test <- subset(test, select = -c(GarageYrBlt, Id))
+```
+
+
+
+# Model
+
+Firstly, we split the train and test data into x and y. x contains all the predictors and y contains the response which is 'SalePrice'. Then we can use the x_train and y_train to fit the model, and then use the x_test to predict. Finally, we can compare the prediction and the y_test to calculate the MSE.
+
+```{r}
+library(glmnet)
+library(tidyverse)
+library(boot)
+```
+
+```{r}
+x_train=model.matrix(SalePrice~.,train)[,-1]
+y_train=train$SalePrice
+```
+
+```{r}
+x_test=model.matrix(SalePrice~.,test)[,-1]
+y_test=test$SalePrice
+```
+
+# LASSO without Log Transformation
+
+LASSO, Least Absolute Shrinkage and Selection Operator, is a regression analysis method that performs both variable selection and regularization in order to enhance the prediction accuracy of the resulting statistical model. We expect that LASSO can do a very good job because we have lots of variables in the data and we hope LASSO can do the selection well.
+
+Then, first thing we are going to do is estimate the $\lambda$ using crossing validation. $\lambda$ is a shrinkage parameter in LASSO and it can decide the constraint range of the coefficient. So we have to find which value of $\lambda$ can perform the best MSE.
+
+```{r}
+set.seed(4620)
+lasso.cv = cv.glmnet(x_train,y_train,alpha=1)
+```
+
+```{r}
+plot(lasso.cv$lambda,lasso.cv$cvm,xlim=c(0,5000))
+```
+
+Finally, from the plots above and the figures below, we can confirm that 1386 is the best value fore $\lambda$ which can perform the lowest MSE.
+
+```{r}
+lambda.cv = lasso.cv$lambda.min
+lambda.cv
+```
+
+Then we use the 1386 as the $\lambda$ and fit the LASSO model with x_train and y_train. Make the prediction with x_test, and calculate the MSE, which is 764887499. The MSE seems pretty big because we have enormous data rows. We have to compare it with other models to see which perform better.
+
+```{r}
+fit.lasso = glmnet(x_train,y_train,alpha=1,lambda=lambda.cv)
+pred.lasso = predict(fit.lasso,newx=x_test)
+mean((y_test-pred.lasso)^2)
+```
+
+# Ridge Regression without Log Transformation
+
+Ridge Regression is a very similar model with LASSO. It can also select the variables but it can't make coefficients to be zero, but very nearly to zero. Also to do that, we need to find the best $\lambda$ first. We still use the cross validation to find it. 
+
+```{r}
+set.seed(4620)
+rr.cv = cv.glmnet(x_train,y_train,alpha=0)
+```
+
+```{r}
+plot(rr.cv$lambda,rr.cv$cvm,xlim=c(0,50000))
+```
+
+From the plots above and the figure below, we can see that the best $\lambda$ is 36808. This is a pretty big $\lambda$. I think it is because we have too many variables and we need to use a very strict constraint to shrinkage them. 
+
+```{r}
+lambda.cv2 = rr.cv$lambda.min
+lambda.cv2
+```
+
+Then we use the 36808 as the $\lambda$ and fit the RR model with x_train and y_train. Make the prediction with x_test, and calculate the MSE, which is 752427157. This MSE is little smaller than LASSO. So compare with LASSO and RR, RR performs better in this data.
+
+```{r}
+fit.rr = glmnet(x_train,y_train,alpha=0,lambda=lambda.cv2)
+pred.rr = predict(fit.rr,newx=x_test)
+mean((y_test-pred.rr)^2)
+```
+
+# Log Transformation
+
+In the EDA, our group find that the response seems less skewed after we take the log transformation on it. But the MSE is much smaller after taking the log transformation because the value of response is much smaller. In order to compare the MSE of two methods, we decide to fit the model with response log transformation, and finally exponential the response before calculating the MSE.
+
+Firstly, we make the log transformation on 'SalePrice' from both train and test. Then split the train and test data into x and y. x contains all the predictors and y contains the response which is 'SalePrice'.
+
+```{r}
+train <- train %>% 
+  mutate(SalePrice = log(SalePrice))
+
+test <- test %>% 
+  mutate(SalePrice = log(SalePrice))
+```
+
+```{r}
+x_train=model.matrix(SalePrice~.,train)[,-1]
+y_train=train$SalePrice
+```
+
+```{r}
+x_test=model.matrix(SalePrice~.,test)[,-1]
+y_test=test$SalePrice
+```
+
+# LASSO with Log Transformation
+
+Then same as before, we estimate the $\lambda$ with cross validation. This $\lambda$ is much smaller than before, so the constraint will be much flexible.
+
+```{r}
+set.seed(4620)
+lasso.cv = cv.glmnet(x_train,y_train,alpha=1)
+lambda.cv = lasso.cv$lambda.min
+lambda.cv
+```
+
+Then we fit the model and make the prediction. But before we calculate the MSE, we exponential the y_test and prediction both. The MSE we get after taking log transformation is much bigger than before.
+
+```{r}
+fit.lasso = glmnet(x_train,y_train,alpha=1,lambda=lambda.cv)
+pred.lasso = predict(fit.lasso,newx=x_test)
+mean((exp(y_test)-exp(pred.lasso))^2)
+```
+
+# Ridge Regression with Log Transformation
+
+Then we do the same thing on RR. We can also see that the MSE is still much bigger than before. I think the reasons why the MSE is much bigger after taking the log transformation is because log transformation affect the correlation between the 'SalePrice' and predictors. So we will get much worse model.
+
+```{r}
+set.seed(4620)
+rr.cv = cv.glmnet(x_train,y_train,alpha=0)
+lambda.cv2 = rr.cv$lambda.min
+lambda.cv2
+```
+
+```{r}
+fit.rr = glmnet(x_train,y_train,alpha=0,lambda=lambda.cv2)
+pred.rr = predict(fit.rr,newx=x_test)
+mean((exp(y_test)-exp(pred.rr))^2)
+```
+
+
+
+# MSE Plot
+
+```{r message=FALSE}
+library(readr)
+mse <- read_csv("MSE.csv")
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(mse, aes(x=Models)) + 
+  geom_line(aes(y = Original_MSE, group = 1), color = "darkred") + 
+  geom_line(aes(y = Log_MSE, group = 1), color="steelblue") +
+  geom_point(aes(y = Original_MSE), color = "darkred") +
+  geom_point(aes(y = Log_MSE), color = "steelblue") +
+  labs(x = "Models", y = "MSE", title = "MSE for different models with log transformation or not")
+
+```
+
